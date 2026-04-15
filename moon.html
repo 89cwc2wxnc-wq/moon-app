@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Фаза Луны — Саарланд</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #05080f;
+    color: #d0d8e8;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Star field */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 15%, #fff 0%, transparent 100%),
+      radial-gradient(1px 1px at 25% 40%, #ccc 0%, transparent 100%),
+      radial-gradient(1px 1px at 40% 8%, #fff 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 25%, #aaa 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 5%, #fff 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 35%, #ddd 0%, transparent 100%),
+      radial-gradient(1px 1px at 15% 60%, #ccc 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 75%, #fff 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 55%, #bbb 0%, transparent 100%),
+      radial-gradient(1px 1px at 65% 80%, #fff 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 65%, #ddd 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 90%, #ccc 0%, transparent 100%),
+      radial-gradient(1px 1px at 5% 90%, #fff 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 95%, #aaa 0%, transparent 100%),
+      radial-gradient(1px 1px at 95% 50%, #fff 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 20% 20%, #fff 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 75% 45%, #eee 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 35% 85%, #fff 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 60% 70%, #ddd 0%, transparent 100%),
+      radial-gradient(2px 2px at 88% 12%, #fff 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #7a8fb0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* Moon canvas wrapper */
+  .moon-wrap {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    filter: drop-shadow(0 0 32px rgba(180, 200, 255, 0.18));
+  }
+
+  canvas#moon {
+    display: block;
+  }
+
+  /* Info card */
+  .card {
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 20px 24px;
+    width: 100%;
+    backdrop-filter: blur(6px);
+  }
+
+  .phase-name {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #e8eeff;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .illum {
+    text-align: center;
+    font-size: 0.95rem;
+    color: #8899bb;
+    margin-bottom: 16px;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    gap: 12px;
+  }
+
+  .row-label {
+    font-size: 0.82rem;
+    color: #6070a0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .row-value {
+    font-size: 0.95rem;
+    color: #c8d8f0;
+    text-align: right;
+    line-height: 1.45;
+  }
+
+  .row-value strong {
+    color: #e8eeff;
+    font-size: 1.05rem;
+  }
+
+  /* Visibility badge */
+  .vis-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .vis-good  { background: rgba(60,180,80,0.2);  color: #5dd87a; border: 1px solid rgba(60,180,80,0.3); }
+  .vis-low   { background: rgba(220,160,30,0.2); color: #e8c44a; border: 1px solid rgba(220,160,30,0.3); }
+  .vis-none  { background: rgba(180,50,50,0.2);  color: #d06060; border: 1px solid rgba(180,50,50,0.3); }
+
+  /* Cycle progress bar */
+  .progress-section {
+    width: 100%;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #506080;
+    margin-bottom: 8px;
+  }
+
+  .progress-track {
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2a3a6a 0%, #6080d0 50%, #c0d0ff 100%);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+
+  .progress-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(200,220,255,0.8);
+    pointer-events: none;
+  }
+
+  .cycle-icons {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: #405070;
+    margin-top: 6px;
+  }
+
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 0.72rem;
+    color: #304060;
+    text-align: center;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Луна · Саарланд</h1>
+
+  <div class="moon-wrap">
+    <canvas id="moon" width="200" height="200"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="phase-name" id="phaseName">—</div>
+    <div class="illum" id="illumText">—</div>
+
+    <div class="row">
+      <span class="row-label">Новолуние</span>
+      <span class="row-value" id="nextNew">—</span>
+    </div>
+
+    <div class="row">
+      <span class="row-label">Восход / Заход</span>
+      <span class="row-value" id="riseSet">—</span>
+    </div>
+
+    <div class="row">
+      <span class="row-label">Видимость</span>
+      <span class="row-value" id="visCell">—</span>
+    </div>
+  </div>
+
+  <div class="card progress-section">
+    <div class="progress-label">
+      <span>🌑 Новолуние</span>
+      <span id="cycleDay">—</span>
+      <span>🌑 Следующее</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      <div class="progress-marker" id="progressMarker" style="left:0%"></div>
+    </div>
+    <div class="cycle-icons">
+      <span>🌒</span><span>🌓</span><span>🌔</span><span>🌕</span><span>🌖</span><span>🌗</span><span>🌘</span>
+    </div>
+  </div>
+</div>
+
+<footer id="tsFooter">—</footer>
+
+<script>
+// ─── Julian Date ──────────────────────────────────────────────────────────────
+function toJD(date) {
+  const Y = date.getUTCFullYear(), M = date.getUTCMonth() + 1, D = date.getUTCDate();
+  const H = date.getUTCHours(), Min = date.getUTCMinutes(), S = date.getUTCSeconds();
+  const dayFrac = H / 24 + Min / 1440 + S / 86400;
+  let y = Y, m = M;
+  if (m <= 2) { y--; m += 12; }
+  const A = Math.floor(y / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + D + dayFrac + B - 1524.5;
+}
+
+// ─── Moon phase calculation (Jean Meeus, Astronomical Algorithms) ─────────────
+function moonPhase(date) {
+  const jd = toJD(date);
+  // Days since known new moon (Jan 6 2000 18:14 UTC → JD 2451549.75)
+  const KNOWN_NM = 2451549.75;
+  const SYNODIC = 29.530588853;
+  const age = ((jd - KNOWN_NM) % SYNODIC + SYNODIC) % SYNODIC;
+  const illum = (1 - Math.cos(2 * Math.PI * age / SYNODIC)) / 2;
+  return { age, illum, jd };
+}
+
+function nextNewMoon(date) {
+  const KNOWN_NM = 2451549.75;
+  const SYNODIC = 29.530588853;
+  const jd = toJD(date);
+  const age = ((jd - KNOWN_NM) % SYNODIC + SYNODIC) % SYNODIC;
+  const daysLeft = SYNODIC - age;
+  const nmJD = jd + daysLeft;
+  // Convert JD back to Date
+  const nmDate = jdToDate(nmJD);
+  return { daysLeft, nmDate };
+}
+
+function jdToDate(jd) {
+  const j = jd + 0.5;
+  const Z = Math.floor(j);
+  const F = j - Z;
+  let A = Z;
+  if (Z >= 2299161) {
+    const alpha = Math.floor((Z - 1867216.25) / 36524.25);
+    A = Z + 1 + alpha - Math.floor(alpha / 4);
+  }
+  const B = A + 1524;
+  const C = Math.floor((B - 122.1) / 365.25);
+  const D = Math.floor(365.25 * C);
+  const E = Math.floor((B - D) / 30.6001);
+  const dayFrac = B - D - Math.floor(30.6001 * E) + F;
+  const day = Math.floor(dayFrac);
+  const hour = (dayFrac - day) * 24;
+  const month = E < 14 ? E - 1 : E - 13;
+  const year = month > 2 ? C - 4716 : C - 4715;
+  return new Date(Date.UTC(year, month - 1, day, Math.floor(hour),
+    Math.floor((hour % 1) * 60), Math.floor(((hour % 1) * 60 % 1) * 60)));
+}
+
+function phaseName(age) {
+  const SYNODIC = 29.530588853;
+  const p = age / SYNODIC;
+  if (p < 0.025 || p >= 0.975) return 'Новолуние';
+  if (p < 0.235)               return 'Молодой месяц';
+  if (p < 0.265)               return 'Первая четверть';
+  if (p < 0.475)               return 'Прибывающая луна';
+  if (p < 0.525)               return 'Полнолуние';
+  if (p < 0.735)               return 'Убывающая луна';
+  if (p < 0.765)               return 'Последняя четверть';
+  return 'Старый месяц';
+}
+
+// ─── Moon rise/set (based on Meeus chapter 15 adapted for moon) ───────────────
+// Uses iterative correction approach
+const LAT = 49.23;
+const LON = 7.00;
+const TZ  = 'Europe/Berlin';
+
+function deg2rad(d) { return d * Math.PI / 180; }
+function rad2deg(r) { return r * 180 / Math.PI; }
+
+// Normalize angle to [0, 360)
+function norm360(a) { return ((a % 360) + 360) % 360; }
+
+// Moon's geocentric position (low-precision, Meeus ch.47 abbreviated)
+function moonPosition(jd) {
+  const T = (jd - 2451545.0) / 36525;
+
+  // Moon's mean longitude
+  let L = 218.3164477 + 481267.88123421 * T - 0.0015786 * T * T + T * T * T / 538841 - T * T * T * T / 65194000;
+  // Mean elongation
+  let D = 297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + T * T * T / 545868 - T * T * T * T / 113065000;
+  // Sun's mean anomaly
+  let M = 357.5291092 + 35999.0502909 * T - 0.0001536 * T * T + T * T * T / 24490000;
+  // Moon's mean anomaly
+  let Mp = 134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + T * T * T / 69699 - T * T * T * T / 14712000;
+  // Moon's argument of latitude
+  let F = 93.2720950 + 483202.0175233 * T - 0.0036539 * T * T - T * T * T / 3526000 + T * T * T * T / 863310000;
+
+  L  = norm360(L);
+  D  = norm360(D);
+  M  = norm360(M);
+  Mp = norm360(Mp);
+  F  = norm360(F);
+
+  const Lr = deg2rad(L), Dr = deg2rad(D), Mr = deg2rad(M), Mpr = deg2rad(Mp), Fr = deg2rad(F);
+
+  // Longitude correction (principal terms)
+  let dL = 6288774 * Math.sin(Mpr)
+          + 1274027 * Math.sin(2*Dr - Mpr)
+          +  658314 * Math.sin(2*Dr)
+          +  213618 * Math.sin(2*Mpr)
+          -  185116 * Math.sin(Mr)
+          -  114332 * Math.sin(2*Fr)
+          +   58793 * Math.sin(2*Dr - 2*Mpr)
+          +   57066 * Math.sin(2*Dr - Mr - Mpr)
+          +   53322 * Math.sin(2*Dr + Mpr)
+          +   45758 * Math.sin(2*Dr - Mr)
+          -   40923 * Math.sin(Mr - Mpr)
+          -   34720 * Math.sin(Dr)
+          -   30383 * Math.sin(Mr + Mpr)
+          +   15327 * Math.sin(2*Dr - 2*Fr)
+          -   12528 * Math.sin(Mpr + 2*Fr)
+          +   10980 * Math.sin(Mpr - 2*Fr)
+          +   10675 * Math.sin(4*Dr - Mpr)
+          +   10034 * Math.sin(3*Mpr)
+          +    8548 * Math.sin(4*Dr - 2*Mpr)
+          -    7888 * Math.sin(2*Dr + Mr - Mpr)
+          -    6766 * Math.sin(2*Dr + Mr)
+          -    5163 * Math.sin(Dr - Mpr)
+          +    4987 * Math.sin(Dr + Mr)
+          +    4036 * Math.sin(2*Dr - Mr + Mpr)
+          +    3994 * Math.sin(2*Dr + 2*Mpr)
+          +    3861 * Math.sin(4*Dr)
+          +    3665 * Math.sin(2*Dr - 3*Mpr);
+
+  // Latitude correction (principal terms)
+  let dB = 5128122 * Math.sin(Fr)
+          +  280602 * Math.sin(Mpr + Fr)
+          +  277693 * Math.sin(Mpr - Fr)
+          +  173237 * Math.sin(2*Dr - Fr)
+          +   55413 * Math.sin(2*Dr - Mpr + Fr)
+          +   46271 * Math.sin(2*Dr - Mpr - Fr)
+          +   32573 * Math.sin(2*Dr + Fr)
+          +   17198 * Math.sin(2*Mpr + Fr)
+          +    9266 * Math.sin(2*Dr + Mpr - Fr)
+          +    8822 * Math.sin(2*Mpr - Fr)
+          +    8216 * Math.sin(2*Dr - Mr - Fr)
+          +    4324 * Math.sin(2*Dr - 2*Mpr - Fr)
+          +    4200 * Math.sin(2*Dr + Mpr + Fr)
+          -    3359 * Math.sin(2*Dr + Mr - Fr)
+          +    2463 * Math.sin(2*Dr - Mr + Mpr - Fr)
+          +    2211 * Math.sin(2*Dr - Mr - Mpr + Fr) // approx
+          +    2065 * Math.sin(2*Dr - Mr - Mpr - Fr);
+
+  const lambda = norm360(L + dL / 1000000);
+  const beta   = dB / 1000000; // degrees
+
+  // Convert ecliptic to equatorial
+  const eps = 23.4392911 - 0.013004167 * T; // obliquity
+  const epsr = deg2rad(eps);
+  const lamd = deg2rad(lambda);
+  const betr = deg2rad(beta);
+
+  const sinDec = Math.sin(betr) * Math.cos(epsr) + Math.cos(betr) * Math.sin(epsr) * Math.sin(lamd);
+  const dec = rad2deg(Math.asin(sinDec));
+
+  const cosRA = Math.cos(lamd) * Math.cos(betr) / Math.cos(deg2rad(dec));
+  const sinRA = (Math.cos(epsr) * Math.cos(betr) * Math.sin(lamd) - Math.sin(epsr) * Math.sin(betr)) / Math.cos(deg2rad(dec));
+  let ra = rad2deg(Math.atan2(sinRA, cosRA));
+  ra = norm360(ra) / 15; // convert to hours
+
+  return { ra, dec };
+}
+
+// Greenwich Sidereal Time at 0h UT for given JD
+function GST0(jd) {
+  const T = (Math.floor(jd - 0.5) + 0.5 - 2451545.0) / 36525;
+  let theta = 100.4606184 + 36000.77004 * T + 0.000387933 * T * T - T * T * T / 38710000;
+  return norm360(theta) / 15; // hours
+}
+
+// Compute local hour angle for rise/set (h0 = altitude at event, typically -0.833 for sun, 0.125 for moon)
+function riseSetTimes(jd0, ra, dec, lat, lon, h0) {
+  const cosH = (Math.sin(deg2rad(h0)) - Math.sin(deg2rad(lat)) * Math.sin(deg2rad(dec)))
+               / (Math.cos(deg2rad(lat)) * Math.cos(deg2rad(dec)));
+  if (cosH < -1) return { rise: null, set: null, alwaysUp: true };
+  if (cosH >  1) return { rise: null, set: null, alwaysDown: true };
+
+  const H0 = rad2deg(Math.acos(cosH)) / 15; // hours
+  const gst = GST0(jd0);
+
+  // Transit time in UT
+  let m0 = (ra - lon / 15 - gst + 24) % 24;
+  if (m0 < 0) m0 += 24;
+
+  let rise = m0 - H0;
+  let set  = m0 + H0;
+
+  // Normalize
+  if (rise < 0)  rise += 24;
+  if (rise >= 24) rise -= 24;
+  if (set < 0)   set += 24;
+  if (set >= 24) set -= 24;
+
+  return { rise, set };
+}
+
+function formatHM(decimalHours) {
+  if (decimalHours === null || decimalHours === undefined) return null;
+  let h = Math.floor(decimalHours);
+  let m = Math.round((decimalHours - h) * 60);
+  if (m === 60) { h++; m = 0; }
+  if (h >= 24) h -= 24;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+// Convert UTC decimal hours to Berlin local time string
+function utcHoursToLocal(utcH, dateObj) {
+  if (utcH === null || utcH === undefined) return null;
+  // Use Intl to determine Berlin offset for this date
+  const testDate = new Date(dateObj);
+  testDate.setUTCHours(Math.floor(utcH), Math.round((utcH % 1) * 60), 0, 0);
+  return testDate.toLocaleTimeString('ru-RU', {
+    timeZone: TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
+// Iterative moon rise/set for a given calendar date (Europe/Berlin midnight → UTC)
+function moonRiseSet(localDate) {
+  // Get midnight Berlin time in UTC
+  const berlinMidnight = new Date(localDate.toLocaleDateString('en-CA', { timeZone: TZ }) + 'T00:00:00');
+  // Convert to actual UTC midnight for Berlin date
+  const berlinDateStr = localDate.toLocaleDateString('en-CA', { timeZone: TZ });
+  const parts = berlinDateStr.split('-');
+  // We'll use JD of 0h UT of the day
+  const y = parseInt(parts[0]), mo = parseInt(parts[1]), d = parseInt(parts[2]);
+  const jd0 = toJD(new Date(Date.UTC(y, mo - 1, d, 0, 0, 0)));
+
+  // Get moon position at 0h UT (approximate for the day)
+  const pos = moonPosition(jd0 + 0.5); // midday position
+
+  const h0 = 0.125; // Moon's geometric altitude at rise/set (slightly above horizon, accounting for parallax)
+
+  let result = riseSetTimes(jd0, pos.ra, pos.dec, LAT, LON, h0);
+
+  // Iterative correction for transit
+  // Second pass: refine using actual positions at rise/set times
+  if (result.rise !== null) {
+    const posR = moonPosition(jd0 + result.rise / 24);
+    const posS = moonPosition(jd0 + result.set / 24);
+    const riseR = riseSetTimes(jd0, posR.ra, posR.dec, LAT, LON, h0);
+    const setR  = riseSetTimes(jd0, posS.ra, posS.dec, LAT, LON, h0);
+    if (riseR.rise !== null) result.rise = (result.rise + riseR.rise) / 2;
+    if (setR.set  !== null) result.set  = (result.set  + setR.set)  / 2;
+  }
+
+  return { ...result, jd0, berlinDateStr };
+}
+
+// ─── Canvas moon rendering ────────────────────────────────────────────────────
+function drawMoon(age) {
+  const canvas = document.getElementById('moon');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const R = W / 2 - 4;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const SYNODIC = 29.530588853;
+  const phase = age / SYNODIC; // 0=new, 0.5=full, 1=new
+
+  // Waxing: 0→0.5 (right side lit), Waning: 0.5→1 (left side lit)
+  const waxing = phase <= 0.5;
+
+  // Lit fraction angle: how open the terminator ellipse is
+  // At phase=0 or 1: fully dark; at 0.5: fully lit
+  const litFrac = waxing ? phase * 2 : (1 - phase) * 2; // 0..1
+  // Ellipse X semi-axis: 1 at new (fully shadowed), -1 at full
+  // +R = dark (shadow edge inward), 0 = quarter, -R = full (edge outward)
+  const ellipseX = R * Math.cos(Math.PI * litFrac);
+
+  // Draw dark side (full disk, dark)
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+  ctx.fillStyle = '#1a1e2e';
+  ctx.fill();
+
+  // Subtle disk glow edge
+  const glowGrad = ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R);
+  glowGrad.addColorStop(0, 'rgba(60,70,100,0)');
+  glowGrad.addColorStop(1, 'rgba(80,100,150,0.12)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+  ctx.fillStyle = glowGrad;
+  ctx.fill();
+
+  // Draw lit portion using clip path
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+  ctx.clip();
+
+  if (waxing) {
+    // Lit on right (east). Terminator is left ellipse edge
+    // Draw lit half (right semicircle)
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, -Math.PI / 2, Math.PI / 2); // right half
+    ctx.closePath();
+
+    // Subtract dark terminator ellipse
+    // The ellipse goes from top to bottom, x offset = ellipseX from center
+    ctx.moveTo(cx, cy - R);
+    // Draw the terminator ellipse (overlapping on lit side)
+    // We use a compositing trick: draw lit area then overlay shadow
+    const litGrad = ctx.createRadialGradient(cx + R * 0.1, cy - R * 0.15, 0, cx, cy, R);
+    litGrad.addColorStop(0, '#f8f0d0');
+    litGrad.addColorStop(0.4, '#e8dfc0');
+    litGrad.addColorStop(0.85, '#c8c0a8');
+    litGrad.addColorStop(1, '#a0988a');
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    ctx.fillStyle = litGrad;
+    ctx.fill();
+
+    // Shadow the left half (dark side)
+    ctx.beginPath();
+    ctx.rect(0, 0, cx, H);
+    ctx.fillStyle = '#1a1e2e';
+    ctx.fill();
+
+    // Terminator ellipse: covers the right portion based on phase
+    // ellipseX > 0: shadow bulges right (crescent), ellipseX < 0: lit bulges left (gibbous)
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.abs(ellipseX), R, 0, 0, 2 * Math.PI);
+    if (ellipseX > 0) {
+      // Shadow on right side of terminator (crescent: narrow lit sliver on right)
+      ctx.fillStyle = '#1a1e2e';
+    } else {
+      // litFrac > 0.5: gibbous, ellipse is on the dark (left) side and is lit
+      ctx.fillStyle = litGrad;
+    }
+    ctx.fill();
+
+  } else {
+    // Waning: lit on left
+    const litGrad = ctx.createRadialGradient(cx - R * 0.1, cy - R * 0.15, 0, cx, cy, R);
+    litGrad.addColorStop(0, '#f8f0d0');
+    litGrad.addColorStop(0.4, '#e8dfc0');
+    litGrad.addColorStop(0.85, '#c8c0a8');
+    litGrad.addColorStop(1, '#a0988a');
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    ctx.fillStyle = litGrad;
+    ctx.fill();
+
+    // Shadow the right half
+    ctx.beginPath();
+    ctx.rect(cx, 0, cx, H);
+    ctx.fillStyle = '#1a1e2e';
+    ctx.fill();
+
+    // Terminator ellipse
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.abs(ellipseX), R, 0, 0, 2 * Math.PI);
+    if (ellipseX > 0) {
+      ctx.fillStyle = '#1a1e2e';
+    } else {
+      ctx.fillStyle = litGrad;
+    }
+    ctx.fill();
+  }
+
+  ctx.restore();
+
+  // Moon surface texture (subtle craters)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+  ctx.clip();
+  const craters = [
+    [0.15, -0.25, 0.07],
+    [-0.05, 0.1, 0.05],
+    [0.3, 0.2, 0.06],
+    [-0.2, -0.1, 0.04],
+    [0.05, -0.4, 0.035],
+    [-0.3, 0.3, 0.045],
+    [0.25, -0.1, 0.03],
+    [-0.1, 0.35, 0.03],
+  ];
+  craters.forEach(([dx, dy, r]) => {
+    const px = cx + dx * R, py = cy + dy * R, pr = r * R;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px - pr * 0.3, py - pr * 0.3, pr * 0.6, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // Rim glow
+  const rimGrad = ctx.createRadialGradient(cx, cy, R - 3, cx, cy, R + 1);
+  rimGrad.addColorStop(0, 'rgba(180,200,255,0.0)');
+  rimGrad.addColorStop(1, 'rgba(180,200,255,0.15)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+  ctx.strokeStyle = rimGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+// ─── Visibility assessment ────────────────────────────────────────────────────
+function computeVisibility(age, riseUTC, setUTC, date) {
+  // Night window: roughly astronomical dusk (21:00 local) to dawn (05:00 local)
+  // Get sunset/sunrise approximate times for Berlin in April: ~20:30 – 06:00 local
+  // We'll use fixed rough window for simplicity: 21:00 – 05:00 local = 19:00-03:00 UTC (CEST = UTC+2)
+  // Better: compute Berlin offset dynamically
+  const testD = new Date(date);
+  testD.setHours(12, 0, 0, 0);
+  const berlinHour = parseInt(testD.toLocaleTimeString('en-US', { timeZone: TZ, hour: '2-digit', hour12: false }));
+  const utcHour = testD.getUTCHours();
+  const berlinOffsetH = berlinHour - utcHour; // e.g. 2 for CEST
+
+  // Night: 21:00 to 05:00 local = (21-offset) to (5-offset+24) UTC
+  const nightStartUTC = (21 - berlinOffsetH + 24) % 24;  // e.g. 19 UTC
+  const nightEndUTC   = (5  - berlinOffsetH + 24) % 24;  // e.g. 3 UTC
+
+  const illum = (1 - Math.cos(2 * Math.PI * age / 29.530588853)) / 2;
+
+  if (riseUTC === null && setUTC === null) {
+    // Always down or always up
+    return { level: 'none', text: 'весь день под горизонтом' };
+  }
+
+  // Check overlap between moon visibility and night
+  // Ranges are in UTC. Moon is above horizon from riseUTC to setUTC (or wrapping).
+  // Night is from nightStartUTC to nightEndUTC (wrapping across midnight)
+  function overlap(rU, sU, nS, nE) {
+    // normalize to [0,48) to handle wrap-around
+    // Moon above: rU → sU (may wrap)
+    // Night: nS → nE (may wrap)
+    const moonUp = sU > rU ? [[rU, sU]] : [[rU, 24], [0, sU]];
+    const night  = nE > nS ? [[nS, nE]] : [[nS, 24], [0, nE]];
+    let ovlp = 0;
+    for (const [ms, me] of moonUp) {
+      for (const [ns, ne] of night) {
+        ovlp += Math.max(0, Math.min(me, ne) - Math.max(ms, ns));
+      }
+    }
+    return ovlp;
+  }
+
+  const ovlpH = overlap(riseUTC, setUTC, nightStartUTC, nightEndUTC);
+
+  const riseLocal = utcHoursToLocal(riseUTC, date);
+  const setLocal  = utcHoursToLocal(setUTC, date);
+
+  let text = `над горизонтом с ${riseLocal} до ${setLocal}`;
+
+  if (ovlpH < 0.5) {
+    return { level: 'none', text: `днём над горизонтом (с ${riseLocal} до ${setLocal}), ночью не видна` };
+  }
+
+  // Low illumination = low visibility
+  if (illum < 0.05) {
+    return { level: 'none', text: `новолуние, ${text}` };
+  }
+  if (illum < 0.15 || ovlpH < 1.5) {
+    return { level: 'low', text };
+  }
+  return { level: 'good', text };
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+function run() {
+  const now = new Date();
+  const { age, illum } = moonPhase(now);
+  const { daysLeft, nmDate } = nextNewMoon(now);
+  const SYNODIC = 29.530588853;
+
+  // Phase name
+  document.getElementById('phaseName').textContent = phaseName(age);
+
+  // Illumination
+  const illumPct = Math.round(illum * 100);
+  document.getElementById('illumText').textContent = `Освещённость: ${illumPct}%`;
+
+  // Next new moon
+  const daysLeftInt = Math.floor(daysLeft);
+  const hoursLeft   = Math.round((daysLeft - daysLeftInt) * 24);
+  const nmStr = nmDate.toLocaleDateString('ru-RU', { timeZone: TZ, day: 'numeric', month: 'long' });
+  document.getElementById('nextNew').innerHTML =
+    `<strong>${daysLeftInt} д ${hoursLeft} ч</strong><br>${nmStr}`;
+
+  // Moon rise/set
+  const rs = moonRiseSet(now);
+  let riseLocal = null, setLocal = null;
+  let riseUTC = null, setUTC = null;
+
+  if (rs.alwaysUp) {
+    document.getElementById('riseSet').textContent = 'Луна не заходит';
+  } else if (rs.alwaysDown) {
+    document.getElementById('riseSet').textContent = 'Луна не восходит';
+  } else {
+    riseUTC = rs.rise;
+    setUTC  = rs.set;
+    riseLocal = utcHoursToLocal(riseUTC, now);
+    setLocal  = utcHoursToLocal(setUTC, now);
+    document.getElementById('riseSet').innerHTML =
+      `<strong>↑ ${riseLocal}</strong> &nbsp; <strong>↓ ${setLocal}</strong>`;
+  }
+
+  // Visibility
+  const vis = computeVisibility(age, riseUTC, setUTC, now);
+  const badgeClass = { good: 'vis-good', low: 'vis-low', none: 'vis-none' }[vis.level];
+  const badgeText  = { good: 'Хорошая видимость', low: 'Слабая видимость', none: 'Не видна' }[vis.level];
+  document.getElementById('visCell').innerHTML =
+    `<span class="vis-badge ${badgeClass}">${badgeText}</span><br>${vis.text}`;
+
+  // Progress bar
+  const pct = (age / SYNODIC) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressMarker').style.left = pct + '%';
+  const cycleDay = Math.floor(age);
+  document.getElementById('cycleDay').textContent = `День ${cycleDay + 1} из 30`;
+
+  // Draw moon
+  drawMoon(age);
+
+  // Footer timestamp
+  const tsStr = now.toLocaleString('ru-RU', { timeZone: TZ, dateStyle: 'long', timeStyle: 'short' });
+  document.getElementById('tsFooter').textContent = `Данные на: ${tsStr} · Берлинское время`;
+}
+
+// Animated glow pulse on moon canvas
+function animateMoonGlow() {
+  const wrap = document.querySelector('.moon-wrap');
+  let t = 0;
+  setInterval(() => {
+    t += 0.02;
+    const intensity = 0.14 + 0.06 * Math.sin(t);
+    wrap.style.filter = `drop-shadow(0 0 ${28 + 8 * Math.sin(t)}px rgba(180,200,255,${intensity}))`;
+  }, 50);
+}
+
+run();
+animateMoonGlow();
+</script>
+</body>
+</html>
